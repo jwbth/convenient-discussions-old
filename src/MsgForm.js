@@ -927,7 +927,7 @@ export default class MsgForm {
       }
 
       if (this.target) {
-        // This is for test if the message exists.
+        // This is to test if the message exists.
         this.target.loadCode()
           .fail((e) => {
             let errorType;
@@ -940,8 +940,7 @@ export default class MsgForm {
             cd.env.genericErrorHandler.call(this, {
               errorType,
               data,
-              retryFunc: retryLoad,
-              message: 'Не удалось загрузить сообщение',
+              message: 'Не удалось загрузить целевой раздел или сообщение',
             });
           });
       }
