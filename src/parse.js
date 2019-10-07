@@ -132,9 +132,11 @@ export default function parse(keepedData) {
           !cd.settings.mySig.includes('~~'.concat('~')) ?
         '' :
         // Minifier eats "~~\~~" and "'~~' + '~~'"!
-        mw.RegExp.escape(cd.settings.mySig.slice(0, cd.settings.mySig.indexOf('~~'.concat('~'))))
+        mw.util.escapeRegExp(
+          cd.settings.mySig.slice(0, cd.settings.mySig.indexOf('~~'.concat('~')))
+        )
       ) +
-      mw.RegExp.escape(cd.env.CURRENT_USER_SIG.slice(0, authorInSigMatches.index)) + '$'
+      mw.util.escapeRegExp(cd.env.CURRENT_USER_SIG.slice(0, authorInSigMatches.index)) + '$'
     );
   }
 
@@ -280,6 +282,8 @@ export default function parse(keepedData) {
             yCorrection
         );
       } else if (positionOnScreen === 'bottom') {
+        offset = $el.last().offset().top + $el.last().height() - $(window).height() + yCorrection;
+      } else if (positionOnScreen === 'aboveTop') {
         offset = $el.last().offset().top + $el.last().height() + yCorrection;
       } else {
         offset = $el.first().offset().top + yCorrection;
@@ -300,6 +304,8 @@ export default function parse(keepedData) {
         window.scrollTo(0, offset);
         cd.env.scrollHandleTimeout = false;
       }
+
+      return $(this);
     },
 
     cdIsInViewport(partly = false) {
@@ -1044,9 +1050,79 @@ export default function parse(keepedData) {
     proceedToArchiveDialog();
   }
 
+  const checkForNewMsgs = async () => {
+    const rvstartid = cd.env.newWhileIdle.length
+      ? cd.env.newWhileIdle[cd.env.newWhileIdle.length - 1].revid
+      : mw.config.get('wgRevisionId');
+    let data;
+    try {
+      data = await new mw.Api().get({
+        action: 'query',
+        titles: cd.env.CURRENT_PAGE,
+        prop: 'revisions',
+        rvprop: 'ids|flags|timestamp|user|size|comment',
+        rvdir: 'newer',
+        rvstartid,
+        rvlimit: 500,
+        redirects: true,
+        formatversion: 2,
+      });
+
+      const revisions = data &&
+        data.query &&
+        data.query.pages &&
+        data.query.pages[0] &&
+        data.query.pages[0].revisions;
+
+      const originalNewWhileIdleCount = cd.env.newWhileIdle.length;
+      for (let i = 1; i < revisions.length; i++) {
+        const revision = revisions[i];
+        if (revision.minor ||
+          revision.size - revisions[i - 1].size < cd.env.BYTES_TO_DEEM_MSG ||
+          revision.comment &&
+            (revision.comment.includes('редактирование ответа') ||
+              revision.comment.includes('редактирование дополнения') ||
+              revision.comment.includes('отмена правки')
+            )
+        ) {
+          continue;
+        }
+        cd.env.newWhileIdle.push({
+          user: revision.user,
+          revid: revision.revid,
+        });
+      }
+
+      if (originalNewWhileIdleCount !== cd.env.newWhileIdle.length) {
+        const users = cd.env.removeDuplicates(cd.env.newWhileIdle.map((revision) => revision.user))
+          .join(', ');
+        const newWhileIdleCount = cd.env.newWhileIdle.length;
+        const newEditsText = cd.env.plural(
+          newWhileIdleCount,
+          'новая значительная правка',
+          'новые значительные правки',
+          'новых значительных правок'
+        );
+        cd.env.$refreshButton
+          .addClass('cd-updatePanel-refreshButton-digit')
+          .text(`+${newWhileIdleCount}`)
+          .attr(
+            'title',
+            `${newWhileIdleCount} ${newEditsText} от ${users}. Нажмите, чтобы обновить страницу`
+          );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    setTimeout(checkForNewMsgs, 15000);
+  };
+
   // New messages highlighting and navigation
-  cd.env.lastNewestSeen = 0;
   if (!cd.env.EVERYTHING_MUST_BE_FROZEN && !mw.util.getParamValue('diff')) {
+    cd.env.lastNewestSeen = 0;
+    cd.env.newWhileIdle = [];
+
     if (cd.env.firstRun) {
       cd.env.$updatePanel = $('<div>')
         .attr('id', 'cd-updatePanel')
@@ -1058,37 +1134,30 @@ export default function parse(keepedData) {
         });
       cd.env.$refreshButton = $('<div>')
         .attr('id', 'cd-updatePanel-refreshButton')
-        .attr('title', 'Обновить страницу')
+        .attr('title', cd.strings.refreshPage)
         .appendTo(cd.env.$updatePanel)
-        .click(() => {
-          if (!cd.getLastActiveAlteredMsgForm()) {
-            cd.env.reloadPage();
-          } else {
-            if (confirm('На странице имеются неотправленные формы. Перезагрузить страницу всё равно?')) {
-              cd.env.reloadPage();
-            } else {
-              let lastActiveAlteredMsgForm = cd.getLastActiveAlteredMsgForm();
-              if (lastActiveAlteredMsgForm) {
-                lastActiveAlteredMsgForm.textarea.focus();
-              }
-            }
-          }
-        });
+        .click(cd.env.refreshClick);
       cd.env.$prevButton = $('<div>')
         .attr('id', 'cd-updatePanel-prevButton')
-        .attr('title', 'Перейти к предыдущему новому сообщению')
+        .attr('title', cd.strings.goToPrevNewMsg)
         .click(cd.env.goToPrevNewMsg)
         .css('display', 'none')
         .appendTo(cd.env.$updatePanel);
       cd.env.$nextButton = $('<div>')
         .attr('id', 'cd-updatePanel-nextButton')
-        .attr('title', 'Перейти к следующему новому сообщению')
+        .attr('title', cd.strings.goToNextNewMsg)
         .click(cd.env.goToNextNewMsg)
         .css('display', 'none')
         .appendTo(cd.env.$updatePanel);
 
       cd.env.$updatePanel.appendTo($('body'));
+
+      setTimeout(checkForNewMsgs, 15000);
     } else {
+      cd.env.$refreshButton
+        .removeClass('cd-updatePanel-refreshButton-digit')
+        .empty()
+        .attr('title', cd.strings.refreshPage);
       cd.env.$nextButton
         .hide()
         .addClass('cd-updatePanel-nextButton-digit');
@@ -1377,6 +1446,5 @@ export default function parse(keepedData) {
 
   const comparativeValue = 4 / 1;  // ms / message
   const currentValue = totalTime / cd.msgs.length;
-  console.log(`${Math.round((currentValue / comparativeValue) * 100)}% ` +
-    cd.strings.ofReferenceValue);
+  console.log(`${Math.round((currentValue / comparativeValue) * 100)}% ${cd.strings.ofReferenceValue}`);
 }

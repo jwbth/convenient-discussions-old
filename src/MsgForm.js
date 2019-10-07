@@ -233,18 +233,14 @@ export default class MsgForm {
           }
         }
       } else if (this.mode === 'replyInSection') {
-        if (!this.noIndentationCheckbox || !this.noIndentationCheckbox.isSelected()) {
-          if (!this.targetMsg || this.targetMsg.isOpeningSection) {
-            defaultSummaryComponents.description = 'ответ';
-          } else {
-            if (this.target.author !== cd.env.CURRENT_USER) {
-              defaultSummaryComponents.description = 'ответ ' + formUserName(this.targetMsg);
-            } else {
-              defaultSummaryComponents.description = 'дополнение';
-            }
-          }
+        if (!this.targetMsg || this.targetMsg.isOpeningSection) {
+          defaultSummaryComponents.description = 'ответ';
         } else {
-          defaultSummaryComponents.description = 'дополнение';
+          if (this.target.author !== cd.env.CURRENT_USER) {
+            defaultSummaryComponents.description = 'ответ ' + formUserName(this.targetMsg);
+          } else {
+            defaultSummaryComponents.description = 'дополнение';
+          }
         }
       } else if (this.mode === 'addSection') {
         const uri = new mw.Uri($addSectionLink.attr('href'));
@@ -488,20 +484,9 @@ export default class MsgForm {
         this.pingCheckboxField.setTitle('Невозможно послать уведомление незарегистрированному участнику');
       }
 
-      if (!this.noIndentationCheckbox || !this.noIndentationCheckbox.isSelected()) {
-        this.pingCheckboxField.setLabel(
-          this.targetMsg.isOpeningSection ? 'Уведомить автора темы' : 'Уведомить адресата'
-        );
-      } else {
-        if (this.targetMsg) {
-          this.pingCheckboxField.setLabel('Уведомить автора темы');
-        } else {
-          this.pingCheckbox.setSelected(false);
-          this.pingCheckbox.setDisabled(true);
-          this.pingCheckbox.setTitle('Не удалось определить автора темы');
-          this.pingCheckboxField.setTitle('Не удалось определить автора темы');
-        }
-      }
+      this.pingCheckboxField.setLabel(
+        this.targetMsg.isOpeningSection ? 'Уведомить автора темы' : 'Уведомить адресата'
+      );
     };
 
     if (this.mode !== 'addSection' &&
@@ -517,30 +502,6 @@ export default class MsgForm {
         label: 'Мелким шрифтом',
         align: 'inline',
         tabIndex: String(this.id) + '25',
-      });
-    }
-
-    if (this.mode === 'replyInSection') {
-      this.noIndentationCheckbox = new OO.ui.CheckboxInputWidget({
-        value: 'noIndentation',
-        tabIndex: String(this.id) + '26',
-      });
-      this.noIndentationCheckbox.on('change', (selected) => {
-        if (selected) {
-          this.$element.addClass('cd-msgForm-noIndentation');
-        } else {
-          this.$element.removeClass('cd-msgForm-noIndentation');
-        }
-        this.targetMsg = this.getTargetMsg();
-        if (this.pingCheckbox) {
-          updatePingCheckbox();
-        }
-        updateDefaultSummary(true);
-      });
-
-      this.noIndentationCheckboxField = new OO.ui.FieldLayout(this.noIndentationCheckbox, {
-        label: 'Без отступа',
-        align: 'inline',
       });
     }
     if (this.pingCheckbox) {
@@ -566,7 +527,7 @@ export default class MsgForm {
       ) {
         this.deleteCheckbox = new OO.ui.CheckboxInputWidget({
           value: 'delete',
-          tabIndex: String(this.id) + '27',
+          tabIndex: String(this.id) + '26',
         });
         let initialMinorSelected;
         this.deleteCheckbox.on('change', (selected) => {
@@ -617,9 +578,6 @@ export default class MsgForm {
     }
     if (this.smallCheckboxField) {
       this.horizontalLayout.addItems([this.smallCheckboxField]);
-    }
-    if (this.noIndentationCheckboxField) {
-      this.horizontalLayout.addItems([this.noIndentationCheckboxField]);
     }
     if (this.deleteCheckboxField) {
       this.horizontalLayout.addItems([this.deleteCheckboxField]);
@@ -993,14 +951,6 @@ export default class MsgForm {
       return target;
     } else if (target instanceof Section) {
       if (!last) {
-        if (!this.noIndentationCheckbox || !this.noIndentationCheckbox.isSelected()) {
-          for (let i = target.msgsInFirstSubdivision.length - 1; i >= 0; i--) {
-            if (target.msgsInFirstSubdivision[i].level === 0) {
-              return target.msgsInFirstSubdivision[i];
-            }
-          }
-        }
-
         if (target.msgsInFirstSubdivision[0] && target.msgsInFirstSubdivision[0].isOpeningSection) {
           return target.msgsInFirstSubdivision[0];
         }
@@ -1196,22 +1146,13 @@ export default class MsgForm {
       indentationCharacters = '';
     }
     const isZeroLevel = this.mode === 'addSection' || this.mode === 'addSubsection' ||
-      this.noIndentationCheckbox && this.noIndentationCheckbox.isSelected() ||
       (this.mode === 'edit' && !indentationCharacters) ||
       action === 'preview';
 
     if (this.mode === 'reply' && action === 'submit') {
       indentationCharacters = replyIndentationCharacters;
-    }
-
-    if (this.mode === 'replyInSection') {
-      if (this.target.inCode.lastMsgIndentationFirstCharacter) {
-        indentationCharacters = this.target.inCode.lastMsgIndentationFirstCharacter;
-      } else if (this.noIndentationCheckbox.isSelected()) {
-        indentationCharacters = '';
-      } else {
-        indentationCharacters = '*';
-      }
+    } else if (this.mode === 'replyInSection') {
+      indentationCharacters = this.target.inCode.lastMsgIndentationFirstCharacter || '*';
     }
 
     // Work with code
@@ -1249,7 +1190,7 @@ export default class MsgForm {
         );
       }
     };
-    // Simple function for hiding templates which have no nested ones.
+    // Simple function for hiding templates that have no nested ones.
     hide(/\{\{([^{]\{?)+?\}\}/g);
     // Hide tables
     hide(/^\{\|[^]*?\n\|\}/gm, true);
@@ -1387,9 +1328,6 @@ export default class MsgForm {
       if (this.mode === 'addSubsection') {
         code += '\n';
       }
-      if (this.noIndentationCheckbox && this.noIndentationCheckbox.isSelected()) {
-        code = '\n' + code;
-      }
     }
 
     while (code.match(/(?:\x01|\x03)\d+(?:\x02|\x04)/)) {
@@ -1426,7 +1364,7 @@ export default class MsgForm {
       const succeedingText = pageCode.slice(currentIndex);
 
       const properPlaceRegExp = new RegExp(
-        '^([^]*?(?:' + mw.RegExp.escape(this.target.inCode.sig) +
+        '^([^]*?(?:' + mw.util.escapeRegExp(this.target.inCode.sig) +
         '|\\b\\d?\\d:\\d\\d, \\d\\d? [а-я]+ \\d\\d\\d\\d \\(UTC\\).*)\\n)\\n*' +
         (targetInCode.indentationCharacters.length > 0 ?
           `[:\\*#]{0,${targetInCode.indentationCharacters.length}}` :
@@ -1590,9 +1528,7 @@ export default class MsgForm {
         return;
       }
 
-      const html = data &&
-        data.parse &&
-        data.parse.text;
+      const html = data && data.parse && data.parse.text;
 
       if (html) {
         const msg = this.getTargetMsg(true, true);
@@ -1653,10 +1589,11 @@ export default class MsgForm {
 
       try {
         const data = await new mw.Api().post({
-          action: 'query',
-          rvdifftotext: newPageCode,
-          titles: cd.env.CURRENT_PAGE,
-          prop: 'revisions',
+          action: 'compare',
+          fromtitle: cd.env.CURRENT_PAGE,
+          toslots: 'main',
+          'totext-main': newPageCode,
+          prop: 'diff',
           formatversion: 2,
         });
         const error = data.error;
@@ -1666,14 +1603,7 @@ export default class MsgForm {
           return;
         }
 
-        let html = data &&
-          data.query &&
-          data.query.pages &&
-          data.query.pages[0] &&
-          data.query.pages[0].revisions &&
-          data.query.pages[0].revisions[0] &&
-          data.query.pages[0].revisions[0].diff &&
-          data.query.pages[0].revisions[0].diff.body;
+        let html = data && data.compare && data.compare.body;
 
         if (html) {
           html = '<table class="diff">' +
@@ -1979,7 +1909,7 @@ export default class MsgForm {
       }
 
       if (!$lastVisible.cdIsInViewport(true)) {
-        $lastVisible.cdScrollTo('bottom');
+        $lastVisible.cdScrollTo('aboveTop');
       }
     }
   }

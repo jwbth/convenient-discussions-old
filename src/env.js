@@ -3,6 +3,8 @@ import parse from './parse';
 
 export default {
   IS_RUWIKI: mw.config.get('wgServerName') === 'ru.wikipedia.org',
+  // How much bytes need to be added to the page to deem the edit a new message
+  BYTES_TO_DEEM_MSG: 50,
 
   // Underlayer-related
   UNDERLAYER_FOCUSED_BGCOLOR: '#eaf3ff',
@@ -114,6 +116,11 @@ export default {
     return color;
   },
 
+  plural(count, one, two, five) {
+    const cases = [five, one, two, two, two, five];  // 0, 1, 2, 3, 4, 5
+    return ((count % 100 > 4 && count % 100 < 20) ? five : cases[Math.min(count % 10, 5)]);
+  },
+
   getMonthNumber(mesyats) {
     const month = cd.strings.monthNamesGenitive.indexOf(mesyats);
     if (month === -1) return;
@@ -177,7 +184,7 @@ export default {
     let pattern = '';
 
     const firstChar = s[0];
-    if (mw.RegExp.escape(firstChar) === firstChar &&
+    if (mw.util.escapeRegExp(firstChar) === firstChar &&
       firstChar.toUpperCase() !== firstChar.toLowerCase()
     ) {
       pattern += '[' + firstChar.toUpperCase() + firstChar.toLowerCase() + ']';
@@ -185,7 +192,7 @@ export default {
       pattern += firstChar;
     }
 
-    pattern += mw.RegExp.escape(s.slice(1));
+    pattern += mw.util.escapeRegExp(s.slice(1));
 
     return pattern;
   },
@@ -405,6 +412,21 @@ export default {
     return cd.msgs[foundMsgId];
   },
 
+  refreshClick() {
+    if (!cd.getLastActiveAlteredMsgForm()) {
+      cd.env.reloadPage();
+    } else {
+      if (confirm('На странице имеются неотправленные формы. Перезагрузить страницу всё равно?')) {
+        cd.env.reloadPage();
+      } else {
+        let lastActiveAlteredMsgForm = cd.getLastActiveAlteredMsgForm();
+        if (lastActiveAlteredMsgForm) {
+          lastActiveAlteredMsgForm.textarea.focus();
+        }
+      }
+    }
+  },
+
   goToPrevNewMsg() {
     const foundMsg = cd.env.findMsgInViewport('forward');
     if (!foundMsg) return;
@@ -528,6 +550,14 @@ export default {
       }
     }
 
+    // R
+    if (!e.ctrlKey && !e.shiftKey && !e.altKey && e.keyCode === 82 &&
+      !$(':focus:input').length &&
+      (!$(':focus').length || !$(':focus')[0].isContentEditable)
+    ) {
+      cd.env.refreshClick();
+    }
+
     // W
     if (!e.ctrlKey && !e.shiftKey && !e.altKey && e.keyCode === 87 &&
       !$(':focus:input').length &&
@@ -620,15 +650,15 @@ export default {
       if (!cd.env.$nextButton.hasClass('cd-updatePanel-nextButton-digit')) {
         cd.env.$nextButton
           .addClass('cd-updatePanel-nextButton-digit')
-          .attr('title', 'Перейти к первому непросмотренному сообщению');
+          .attr('title', cd.strings.goToFirstUnseenMsg);
 
       }
       cd.env.$nextButton.text(cd.env.newestCount);
     } else if (cd.env.$nextButton.hasClass('cd-updatePanel-nextButton-digit')) {
       cd.env.$nextButton
         .removeClass('cd-updatePanel-nextButton-digit')
-        .attr('title', 'Перейти к следующему новому сообщению');
-      cd.env.$nextButton.text('');
+        .attr('title', cd.strings.goToNextNewMsg)
+        .text('');
       cd.env.$prevButton.show();
     }
   },
@@ -691,10 +721,7 @@ export default {
       // This is returned to a handler with ".done", so the use of ".then" is deliberate.
       .then(
         (data) => {
-          const options = data &&
-            data.query &&
-            data.query.userinfo &&
-            data.query.userinfo.options;
+          const options = data && data.query && data.query.userinfo && data.query.userinfo.options;
           if (!options) {
             return $.Deferred().reject(['api', 'no data']).promise();
           }
@@ -1128,6 +1155,12 @@ export default {
   },
 
   findPrevMsg(code) {
+    // Hide contents of quotes
+    code = code.replace(
+      /(<blockquote>|\{\{начало цитаты)([^]*?)(<\/blockquote>|\{\{конец цитаты)/ig,
+      (s, m1, m2, m3) => m1 + ' '.repeat(m2.length) + m3
+    );
+
     // We use .* in front of cd.env.SIG_PATTERN to search for the last signature in the code.
     const regexp = new RegExp(`^[^]*(?:^|\\n)(.*${cd.env.SIG_PATTERN}.*\\n)`);
     let match = code.match(regexp);
@@ -1341,8 +1374,8 @@ export default {
           entitiesPattern = popularHTMLEntities[key].join('|');
         }
         authorPattern = authorPattern.replace(
-          mw.RegExp.escape(key),
-          `(?:${mw.RegExp.escape(key)}|${entitiesPattern})`
+          mw.util.escapeRegExp(key),
+          `(?:${mw.util.escapeRegExp(key)}|${entitiesPattern})`
         );
       }
     }
@@ -1350,11 +1383,11 @@ export default {
     let extractPattern;
     if (date !== null) {
       const dateWithOptionalUTCPattern = (
-        mw.RegExp.escape(date).replace(/ \\\(UTC\\\)$/, '(?: \\(UTC\\))?')
+        mw.util.escapeRegExp(date).replace(/ \\\(UTC\\\)$/, '(?: \\(UTC\\))?')
       );
 
       extractPattern = cd.env.USER_NAME_PATTERN + authorPattern + '[|\\]#].*' +
-          mw.RegExp.escape(date) + '[  \t]*(?:\}\}|</small>)?[  \t]*';
+          mw.util.escapeRegExp(date) + '[  \t]*(?:\}\}|</small>)?[  \t]*';
       if (cd.config.extractAuthorDatePatterns) {
         cd.config.extractAuthorDatePatterns.forEach((el, i) => {
           extractPattern += '|' + el
@@ -1472,8 +1505,9 @@ export default {
       cd.env.setLoadingOverlay();
     }
 
-    return cd.env.parseCurrentPage().done((html) => {
-      cd.env.updatePageContent(html, keepedData);
+    return cd.env.parseCurrentPage().done((result) => {
+      mw.config.set('wgRevisionId', result.revid)
+      cd.env.updatePageContent(result.html, keepedData);
     });
   },
 
@@ -1481,7 +1515,7 @@ export default {
     const request = new mw.Api().get({
       action: 'parse',
       page: cd.env.CURRENT_PAGE,
-      prop: 'text',
+      prop: 'text|revid',
       formatversion: 2,
     })
       // This is returned to a handler with ".done", so the use of ".then" is deliberate.
@@ -1495,14 +1529,13 @@ export default {
             return $.Deferred().reject(['api', error]).promise();
           }
 
-          const text = data &&
-            data.parse &&
-            data.parse.text;
-          if (!text) {
+          const html = data && data.parse && data.parse.text;
+          if (!html) {
             return $.Deferred().reject(['api', 'no data']).promise();
           }
+          const revid = data.parse.revid;
 
-          return text;
+          return { html, revid };
         },
         (jqXHR, textStatus, errorThrown) => (
           $.Deferred().reject(['network', [jqXHR, textStatus, errorThrown]]).promise()
@@ -1544,12 +1577,8 @@ export default {
             return $.Deferred().reject(['api', 'no data']).promise();
           }
 
-          const page = query &&
-            query.pages &&
-            query.pages[0];
-          const revision = page &&
-            page.revisions &&
-            page.revisions[0];
+          const page = query && query.pages && query.pages[0];
+          const revision = page && page.revisions && page.revisions[0];
 
           if (page.missing) {
             return $.Deferred().reject(['api', 'missing']).promise();

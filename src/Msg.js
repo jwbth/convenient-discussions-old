@@ -219,7 +219,7 @@ export default class Msg {
               const foreignDate = foreignDateMatch && foreignDateMatch[0];
               if (foreignDate) {
                 // Long but cost-saving analogue of a regular expression
-                // "'.+?' + mw.RegExp.escape(foreignDate) + '.+' + mw.RegExp.escape(dateOrAuthor)"
+                // "'.+?' + mw.util.escapeRegExp(foreignDate) + '.+' + mw.util.escapeRegExp(dateOrAuthor)"
                 // Saves not much, however: 40 ms on a megabyte Ф-ПРА.
                 if (currentText.includes(
                   '\n',
@@ -905,8 +905,12 @@ export default class Msg {
       return;
     }
 
-    (!this.parent.isOpeningSection ? this.parent.$elements : this.parent.section.$heading)
-      .cdScrollTo('top');
+    const $parent = !this.parent.isOpeningSection
+      ? this.parent.$elements
+      : this.parent.section.$heading;
+    if (!$parent.cdIsInViewport()) {
+      $parent.cdScrollTo('top');
+    }
     this.parent.highlightTarget();
 
     const downButton = new OO.ui.ButtonWidget({
@@ -938,7 +942,9 @@ export default class Msg {
       return;
     }
 
-    this.childToScrollBack.$elements.cdScrollTo('top');
+    if (!this.childToScrollBack.$elements.cdIsInViewport()) {
+      this.childToScrollBack.$elements.cdScrollTo('middle');
+    }
     this.childToScrollBack.highlightTarget();
   }
 
@@ -1120,12 +1126,7 @@ export default class Msg {
       msgEndPos = authorAndDateMatches.index;
       msgCode = pageCode.slice(0, msgEndPos);
 
-      // Hide contents of quotes
-      const adjustedMsgCode = msgCode.replace(
-        /(<blockquote>|\{\{начало цитаты)([^]*?)(<\/blockquote>|\{\{конец цитаты)/ig,
-        (s, m1, m2, m3) => m1 + ' '.repeat(m2.length) + m3
-      );
-      const prevMsgInCodeMatch = cd.env.findPrevMsg(adjustedMsgCode);
+      const prevMsgInCodeMatch = cd.env.findPrevMsg(msgCode);
 
       let authorInCode;
       let dateInCode;
@@ -1234,7 +1235,7 @@ export default class Msg {
             break;
           }
 
-          // At least one coincided message is enough, if the second is unavailable.
+          // At least one coincided message is enough if the second is unavailable.
           fail = false;
         }
         if (!fail) {
@@ -1485,7 +1486,7 @@ export default class Msg {
     }
   }
 
-  // Determination of the message visibility for the refresh panel operations
+  // Determine the message visibility for the refresh panel operations
   isInViewport(updatePositions = false, partly = false) {
     const viewportTop = window.pageYOffset;
     const viewportBottom = viewportTop + window.innerHeight;

@@ -1011,13 +1011,13 @@ export default class Section {
           const sectionMatches = adjustedCodeFromSection.match(
             // Will fail at "===" or the like.
             '(' +
-            mw.RegExp.escape(fullMatch) +
+            mw.util.escapeRegExp(fullMatch) +
             '[^]*?\n)' +
             equalSignsPattern +
             '[^=].*?=+[ \t]*(?:<!--[^]*?-->[ \t]*)*\n'
           ) || codeFromSection.match(
             '(' +
-            mw.RegExp.escape(fullMatch) +
+            mw.util.escapeRegExp(fullMatch) +
             '[^]*$)'
           );
 
@@ -1026,13 +1026,13 @@ export default class Section {
           const sectionSubdivisionMatches = adjustedCodeFromSection.match(
             // Will fail at "===" or the like.
             '(' +
-            mw.RegExp.escape(fullMatch) +
+            mw.util.escapeRegExp(fullMatch) +
             '[^]*?\n)\n*' +
             '={1,6}' +  // Any next heading.
             '[^=].*?=+[ \t]*(?:<!--[^]*?-->[ \t]*)*\n'
           ) || codeFromSection.match(
             '(' +
-            mw.RegExp.escape(fullMatch) +
+            mw.util.escapeRegExp(fullMatch) +
             '[^]*$)'
           );
           sectionCode = sectionMatches &&

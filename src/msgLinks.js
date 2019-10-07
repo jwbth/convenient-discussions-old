@@ -34,15 +34,13 @@ export default async function msgLinks() {
         const minorMark = line.querySelector('.minoredit');
         if (minorMark) continue;
 
-        const botMark = line.querySelector('.botedit');
         const comment = line.querySelector('.comment');
         const commentText = comment && comment.textContent;
-        // Cut BotDR; other bots can write meaningful messages.
         if (commentText &&
-          (botMark && commentText.includes('Archiving') ||
-            commentText.includes('редактирование ответа') ||
+          (commentText.includes('редактирование ответа') ||
+            commentText.includes('редактирование дополнения') ||
             commentText.includes('отмена правки') ||
-            commentText.includes(': перенесено')
+            commentText.includes('*/ перенесено')
           )
         ) {
           continue;
@@ -55,9 +53,7 @@ export default async function msgLinks() {
         if (bytesAddedElement.tagName !== 'STRONG') {
           const bytesAddedMatches = bytesAddedElement.textContent.match(/\d+/);
           const bytesAdded = bytesAddedMatches && Number(bytesAddedMatches[0]);
-          if (!bytesAdded || bytesAdded < 50) {
-            continue;
-          }
+          if (!bytesAdded || bytesAdded < cd.env.BYTES_TO_DEEM_MSG) continue;
         }
 
         let date = line.getAttribute('data-mw-ts');
@@ -226,12 +222,11 @@ export default async function msgLinks() {
 
         const comment = line.querySelector('.comment');
         const commentText = comment && comment.textContent;
-        // Cut BotDR; other bots can write meaningful messages.
         if (commentText &&
-          (commentText.includes('Archiving') ||
-            commentText.includes('редактирование ответа') ||
+          (commentText.includes('редактирование ответа') ||
+            commentText.includes('редактирование дополнения') ||
             commentText.includes('отмена правки') ||
-            commentText.includes(': перенесено')
+            commentText.includes('*/ перенесено')
           )
         ) {
           continue;
@@ -242,7 +237,7 @@ export default async function msgLinks() {
         if (bytesAddedElement.tagName !== 'STRONG') {
           const bytesAddedMatches = bytesAddedElement.textContent.match(/\d+/);
           const bytesAdded = bytesAddedMatches && Number(bytesAddedMatches[0]);
-          if (!bytesAdded || bytesAdded < 50) continue;
+          if (!bytesAdded || bytesAdded < cd.env.BYTES_TO_DEEM_MSG) continue;
         }
 
         const dateElement = line.querySelector('.mw-changeslist-date');
@@ -301,12 +296,11 @@ export default async function msgLinks() {
 
         const comment = line.querySelector('.comment');
         const commentText = comment && comment.textContent;
-        // Cut BotDR; other bots can write meaningful messages.
         if (commentText &&
-          (commentText.includes('Archiving') ||
-            commentText.includes('редактирование ответа') ||
+          (commentText.includes('редактирование ответа') ||
+            commentText.includes('редактирование дополнения') ||
             commentText.includes('отмена правки') ||
-            commentText.includes(': перенесено')
+            commentText.includes('*/ перенесено')
           )
         ) {
           continue;
@@ -317,7 +311,7 @@ export default async function msgLinks() {
         if (bytesAddedElement.tagName !== 'STRONG') {
           const bytesAddedMatches = bytesAddedElement.textContent.match(/\d+/);
           const bytesAdded = bytesAddedMatches && Number(bytesAddedMatches[0]);
-          if (!bytesAdded || bytesAdded < 50) continue;
+          if (!bytesAdded || bytesAdded < cd.env.BYTES_TO_DEEM_MSG) continue;
         }
 
         const dateElement = line.querySelector('.mw-changeslist-date');
@@ -433,12 +427,13 @@ export default async function msgLinks() {
 
       const comment = area.querySelector('.comment');
       const commentText = comment && comment.textContent;
-      // Cut BotDR; other bots can write meaningful messages.
       if (commentText &&
+        // BotDR's archivation can't be captured by looking at bytes added here.
         (commentText.includes('Archiving') ||
           commentText.includes('редактирование ответа') ||
+          commentText.includes('редактирование дополнения') ||
           commentText.includes('отмена правки') ||
-          commentText.includes(': перенесено')
+          commentText.includes('*/ перенесено')
         )
       ) {
         return;
