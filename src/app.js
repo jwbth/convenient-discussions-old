@@ -220,22 +220,40 @@ function main() {
 
     cd.debug.startTimer(cd.strings.loadingModules);
 
-    mw.loader.using([
+    const loadingError = (e) => {
+      console.error(e);
+      if (cd.settings.showLoadingOverlay !== false) {
+        cd.env.removeLoadingOverlay();
+      }
+      cd.hasRun = false;
+    }
+
+    const modulesRequest = mw.loader.using([
       'jquery.color',
       'jquery.client',
       'mediawiki.api',
       'mediawiki.cookie',
       'mediawiki.notify',
-      'mediawiki.RegExp',
       'mediawiki.Title',
       'mediawiki.util',
       'mediawiki.widgets.visibleLengthLimit',
       'oojs',
       'oojs-ui',
       'user.options',
-    ]).done(() => {
-      parse();
-    });
+    ])
+      .done(() => {
+        parse();
+      })
+      .fail((e) => {
+        loadingError(e);
+      });
+
+    setTimeout(() => {
+      // https://phabricator.wikimedia.org/T68598
+      if (modulesRequest.state() === 'pending') {
+        loadingError('The promise is in the "pending" state for 5 seconds; halting request.');
+      }
+    }, 5000);
   }
 
   if (mw.config.get('wgCanonicalSpecialPageName') === 'Watchlist' ||
