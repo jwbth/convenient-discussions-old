@@ -115,7 +115,7 @@ function main() {
   const generateAnyCasePattern = (s) => {
     let result = '';
     for (let i = 0; i < s.length; i++) {
-      // mw.util.escapeRegExp(s[i]) === s[i] &&
+      // mw.RegExp.escape(s[i]) === s[i] &&
       if (s[i].toUpperCase() !== s[i].toLowerCase()) {
         result += '[' + s[i].toUpperCase() + s[i].toLowerCase() + ']';
       } else {
@@ -226,6 +226,7 @@ function main() {
       'mediawiki.api',
       'mediawiki.cookie',
       'mediawiki.notify',
+      'mediawiki.RegExp',
       'mediawiki.Title',
       'mediawiki.util',
       'mediawiki.widgets.visibleLengthLimit',
@@ -246,7 +247,7 @@ function main() {
   ) {
     cd.env.addCSS(logPagesCss);
 
-    mw.loader.using(['user.options', 'mediawiki.util']).done(() => {
+    mw.loader.using(['user.options', 'mediawiki.util', 'mediawiki.RegExp']).done(() => {
       msgLinks();
     });
   }
