@@ -651,6 +651,7 @@ export default {
         cd.env.$nextButton
           .addClass('cd-updatePanel-nextButton-digit')
           .attr('title', cd.strings.goToFirstUnseenMsg);
+
       }
       cd.env.$nextButton.text(cd.env.newestCount);
     } else if (cd.env.$nextButton.hasClass('cd-updatePanel-nextButton-digit')) {
@@ -1603,11 +1604,12 @@ export default {
   },
 
   registerSeenMsgs() {
-    // Don't run this more than once in 100ms, otherwise the scrolling may be slowed down.
+    // Don't run the handler of an event more than once in 100ms, otherwise the scrolling may be
+    // slowed down.
     if (!cd.env.newestCount || cd.env.scrollHandleTimeout) return;
 
     cd.env.scrollHandleTimeout = true;
-    // 100 seems to be a reasonable value.
+    // 100 seems to a reasonable value.
     setTimeout(() => {
       cd.env.scrollHandleTimeout = false;
 
