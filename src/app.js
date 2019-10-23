@@ -265,7 +265,7 @@ function main() {
   ) {
     cd.env.addCSS(logPagesCss);
 
-    mw.loader.using(['user.options', 'mediawiki.util', 'mediawiki.RegExp']).done(() => {
+    mw.loader.using(['user.options', 'mediawiki.util']).done(() => {
       msgLinks();
     });
   }
