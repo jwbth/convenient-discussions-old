@@ -452,7 +452,9 @@ export default class MsgForm {
         value: 'watchTopic',
         selected: (this.mode !== 'edit' &&
             cd.settings.watchTopicsOnReply
-          ) || this.targetSection.isWatched,
+          ) || (this.targetSection &&
+            this.targetSection.isWatched
+          ),
         tabIndex: String(this.id) + '22',
       });
       this.watchTopicCheckboxField = new OO.ui.FieldLayout(this.watchTopicCheckbox, {
