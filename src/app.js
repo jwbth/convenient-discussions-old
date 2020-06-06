@@ -222,9 +222,7 @@ function main() {
 
     const loadingError = (e) => {
       console.error(e);
-      if (cd.settings.showLoadingOverlay !== false) {
-        cd.env.removeLoadingOverlay();
-      }
+      cd.env.removeLoadingOverlay();
       cd.hasRun = false;
     }
 
