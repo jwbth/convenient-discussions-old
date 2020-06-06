@@ -839,7 +839,6 @@ export default {
 
     await mw.loader.using([
       'mediawiki.api',
-      'mediawiki.notify',
       'oojs',
       'oojs-ui',
       'user.options',

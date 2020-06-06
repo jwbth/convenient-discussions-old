@@ -233,7 +233,6 @@ function main() {
       'jquery.client',
       'mediawiki.api',
       'mediawiki.cookie',
-      'mediawiki.notify',
       'mediawiki.Title',
       'mediawiki.util',
       'mediawiki.widgets.visibleLengthLimit',
