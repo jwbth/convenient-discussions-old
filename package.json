@@ -5,14 +5,14 @@
   "browser": "src/app.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jwbth/convenient-discussions.git"
+    "url": "git+https://github.com/jwbth/convenient-discussions-old.git"
   },
   "author": "Jack who built the house",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jwbth/convenient-discussions/issues"
+    "url": "https://github.com/jwbth/convenient-discussions-old/issues"
   },
-  "homepage": "https://github.com/jwbth/convenient-discussions#readme",
+  "homepage": "https://github.com/jwbth/convenient-discussions-old#readme",
   "dependencies": {
     "lz-string": "^1.4.4"
   },
