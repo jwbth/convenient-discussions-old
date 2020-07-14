@@ -1092,16 +1092,6 @@ export default class Section {
       checkFirstMsg: true,
     });
 
-    // Reserve method – by first message.
-    if (!sectionFound) {
-      searchForSection({ checkFirstMsg: true });
-    }
-
-    // Second reserve method – by heading only.
-    if (!sectionFound) {
-      searchForSection({ checkHeading: true });
-    }
-
     if (!sectionFound) return;
 
     sectionCode = pageCode.slice(sectionStartPos, sectionEndPos);
